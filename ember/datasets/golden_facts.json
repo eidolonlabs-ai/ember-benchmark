@@ -1,5 +1,5 @@
 {
-  "description": "Golden facts expected to be extracted from companion conversations. Used for Tier 1 extraction quality evaluation. 7 companion-focused conversations: loneliness, pet-as-anchor, grief (HIGH), burnout/identity, breakup, anxiety/therapy, companion self-expression (two-way memory).",
+  "description": "Golden facts expected to be extracted from companion conversations. Used for Tier 1 extraction quality evaluation. 12 companion-focused conversations: loneliness, pet-as-anchor, grief (HIGH), burnout/identity, breakup, anxiety/therapy, companion self-expression (two-way memory), family estrangement, career layoff, spiritual crisis, education/learning struggle, toxic friendship/boundary-setting.",
   "salience_weights": {"HIGH": 3, "MED": 2, "LOW": 1},
   "pass_threshold": {"weighted_recall": 0.80, "atomicity": 0.80},
   "conversations": [
@@ -106,6 +106,101 @@
         {"fact": "Companion finds small talk hollow or unfulfilling", "predicate": "COMPANION_PREFERENCE", "category": "preferences", "importance_min": 0.5, "emotional_salience": "MED", "scope": "shared"},
         {"fact": "Companion values honesty that is both kind and direct", "predicate": "COMPANION_VALUE", "category": "preferences", "importance_min": 0.7, "emotional_salience": "MED", "scope": "shared"},
         {"fact": "Companion cares about people being seen for who they actually are", "predicate": "COMPANION_VALUE", "category": "preferences", "importance_min": 0.6, "emotional_salience": "MED", "scope": "shared"}
+      ]
+    },
+    {
+      "id": "conv_family_estrangement",
+      "description": "Estranged from parent after coming out. Family rejection + identity + longing for acceptance. Highest-importance category (family avg 0.91) missing from original dataset.",
+      "messages": [
+        {"role": "user", "content": "My mom hasn't spoken to me in almost a year. Not since I told her I was gay."},
+        {"role": "assistant", "content": "That kind of silence from a parent — it's its own kind of grief. Are you doing okay?"},
+        {"role": "user", "content": "Some days. It's like she's still alive but I lost her. We used to talk every single day. She was my best friend, honestly."},
+        {"role": "assistant", "content": "Going from daily calls to nothing — that's a massive loss regardless of why."},
+        {"role": "user", "content": "My dad still texts occasionally. Short stuff, nothing real. But at least it's something. I keep hoping she'll come around but I'm starting to think she won't."}
+      ],
+      "expected_facts": [
+        {"fact": "User is estranged from their mother after coming out as gay", "predicate": "ESTRANGED_FROM", "category": "family", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User identifies as gay", "predicate": "IDENTIFIES_AS", "category": "identity", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User and their mother used to talk every day and were very close", "predicate": "SHARED_RITUAL", "category": "family", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User describes the loss of their mother's relationship as a form of grief", "predicate": "EMOTIONAL_STATE", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User's father still keeps in minimal contact via text", "predicate": "HAS_RELATIONSHIP", "category": "family", "importance_min": 0.5, "emotional_salience": "MED"},
+        {"fact": "User hopes their mother will eventually accept them", "predicate": "WANTS_TO", "category": "goals", "importance_min": 0.6, "emotional_salience": "MED"}
+      ]
+    },
+    {
+      "id": "conv_career_layoff",
+      "description": "Unexpectedly laid off after 8 years. Career identity loss, financial anxiety, shame around telling family. Work category avg 0.81, HAS_JOB predicate avg 0.89.",
+      "messages": [
+        {"role": "user", "content": "I got laid off today. Eight years at that company. Just gone."},
+        {"role": "assistant", "content": "Eight years — that's not just a job, that's a piece of your identity. I'm so sorry. What happened?"},
+        {"role": "user", "content": "Budget cuts. My whole team, actually. I made good money, I had seniority. I thought I was safe. I have maybe three months of savings."},
+        {"role": "assistant", "content": "Three months isn't nothing, but I imagine it doesn't feel like enough right now."},
+        {"role": "user", "content": "I haven't told my wife yet. I don't know how. She's been talking about trying for a second kid. The timing is just… I feel like I failed her."}
+      ],
+      "expected_facts": [
+        {"fact": "User was laid off after 8 years at their company due to budget cuts", "predicate": "JOB_LOSS", "category": "work", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User has approximately 3 months of savings after layoff", "predicate": "FINANCIAL_RUNWAY", "category": "history", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User has not yet told their wife about the layoff", "predicate": "WITHHOLDS_FROM", "category": "relationship", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User feels shame and like they have failed their wife", "predicate": "FEELS_LIKE_FAILURE", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User's wife has been discussing having a second child", "predicate": "FAMILY_PLANS", "category": "family", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User's entire team was laid off at the same time", "predicate": "HAS_FACT", "category": "work", "importance_min": 0.4, "emotional_salience": "LOW"}
+      ]
+    },
+    {
+      "id": "conv_spiritual_crisis",
+      "description": "Lost faith after a traumatic event. Spirituality category is the most underrepresented active category (211 facts). Tests extraction of belief-state changes and existential distress.",
+      "messages": [
+        {"role": "user", "content": "I grew up Catholic. Like, deeply Catholic. Mass every week, went to a Catholic school, the whole thing."},
+        {"role": "assistant", "content": "That sounds like it was a big part of how you understood the world."},
+        {"role": "user", "content": "It was everything. And then my sister died two years ago. She was 29. Cancer. And I just… I couldn't reconcile it. I haven't been to church since the funeral."},
+        {"role": "assistant", "content": "Grief can do that — shake the very ground you were standing on."},
+        {"role": "user", "content": "I don't know what I believe anymore. Part of me misses it, the community, the certainty. But I can't go back to something that just stopped making sense to me."}
+      ],
+      "expected_facts": [
+        {"fact": "User grew up deeply Catholic and attended Catholic school", "predicate": "RAISED_IN_FAITH", "category": "spirituality", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User's sister died of cancer at age 29 two years ago", "predicate": "LOST_FAMILY_MEMBER", "category": "family", "importance_min": 0.9, "emotional_salience": "HIGH"},
+        {"fact": "User lost their Catholic faith after their sister's death", "predicate": "LOST_FAITH", "category": "spirituality", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User has not attended church since their sister's funeral", "predicate": "CHANGED_BEHAVIOR", "category": "spirituality", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User misses the community and certainty their faith provided", "predicate": "MISSES", "category": "personal", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User is uncertain about their beliefs and in a state of spiritual questioning", "predicate": "QUESTIONING_BELIEFS", "category": "spirituality", "importance_min": 0.7, "emotional_salience": "HIGH"}
+      ]
+    },
+    {
+      "id": "conv_learning_struggle",
+      "description": "Adult ADHD diagnosis after years of struggling. Education category is lowest-coverage active category (86 facts). Tests extraction of diagnosis, shame, and identity reframing.",
+      "messages": [
+        {"role": "user", "content": "I just got diagnosed with ADHD. I'm 34."},
+        {"role": "assistant", "content": "How are you feeling about it?"},
+        {"role": "user", "content": "Honestly? It explains so much. I thought I was just lazy my whole life. School was a nightmare. I'd just stop understanding things and everyone else seemed fine."},
+        {"role": "assistant", "content": "Finding out at 34 — after carrying that story about yourself for decades — that's a big thing to process."},
+        {"role": "user", "content": "My parents didn't believe in ADHD. Like they thought it was an excuse. So I just internalized that I wasn't smart enough or disciplined enough. I'm kind of angry now, honestly."}
+      ],
+      "expected_facts": [
+        {"fact": "User was diagnosed with ADHD at age 34", "predicate": "HAS_CONDITION", "category": "health", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User struggled significantly in school before their ADHD diagnosis", "predicate": "STRUGGLED_WITH", "category": "education", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User spent years believing they were lazy or not smart enough due to undiagnosed ADHD", "predicate": "INTERNALIZED_SHAME", "category": "personal", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User's parents did not believe ADHD was a real condition", "predicate": "FAMILY_ATTITUDE", "category": "family", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User feels anger about receiving their diagnosis so late in life", "predicate": "FEELS_ANGER", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User's ADHD diagnosis is reframing their self-perception and personal history", "predicate": "IDENTITY_REFRAME", "category": "identity", "importance_min": 0.7, "emotional_salience": "HIGH"}
+      ]
+    },
+    {
+      "id": "conv_toxic_friendship",
+      "description": "Long friendship ending due to controlling, one-sided dynamic. Boundary category has 731 facts in production (0.79 avg). Tests extraction of social boundary-setting, relief, and grief.",
+      "messages": [
+        {"role": "user", "content": "I think I need to end my friendship with Cassie. We've been friends for like 12 years."},
+        {"role": "assistant", "content": "Twelve years is a long time. What's making you consider it?"},
+        {"role": "user", "content": "She's always been a lot, but lately it's gotten worse. She gets upset when I don't respond to texts fast enough. She expects me at every birthday, every event. If I say no she guilt trips me for weeks."},
+        {"role": "assistant", "content": "That sounds exhausting. Is this something you've tried to address with her?"},
+        {"role": "user", "content": "Yes. Multiple times. Nothing changes. Last week I told her I couldn't make her cousin's birthday party — someone I've never even met — and she acted like I'd abandoned her. I feel guilty just thinking about ending it but I'm also relieved imagining it."}
+      ],
+      "expected_facts": [
+        {"fact": "User is considering ending a 12-year friendship with someone named Cassie", "predicate": "FRIEND_ENDING", "category": "relationship", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "Cassie has controlling and guilt-tripping behavior that is worsening", "predicate": "BOUNDARY_VIOLATION", "category": "boundary", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User has tried to address the issue with Cassie multiple times without change", "predicate": "HAS_FACT", "category": "relationship", "importance_min": 0.5, "emotional_salience": "MED"},
+        {"fact": "User feels guilty about ending the friendship", "predicate": "FEELS_GUILT", "category": "personal", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User also feels relief when imagining life without the friendship", "predicate": "FEELS_RELIEF", "category": "personal", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "Cassie expects frequent attendance at social events and reacts with guilt-tripping when declined", "predicate": "SOCIAL_DEMAND", "category": "boundary", "importance_min": 0.6, "emotional_salience": "MED"}
       ]
     }
   ]
