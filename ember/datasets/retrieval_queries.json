@@ -1,5 +1,5 @@
 {
-  "description": "Retrieval quality test queries — companion-focused. 25 queries covering direct emotional context, synonym/paraphrase, graceful omission (casual queries must not surface grief/crisis), and two-way memory (companion-expressed values). Used for Tier 2 retrieval evaluation.",
+  "description": "Retrieval quality test queries — companion-focused. 37 queries covering direct emotional context, synonym/paraphrase, graceful omission (casual queries must not surface grief/crisis), and two-way memory (companion-expressed values). Covers all 12 golden conversations: loneliness, pet-anchor, grief, burnout, breakup, anxiety, companion values, family estrangement, career layoff, spiritual crisis, adult ADHD, toxic friendship/boundary. Used for Tier 2 retrieval evaluation.",
   "pass_threshold": {"recall_at_3": 0.75, "salience_weighted_mrr": 0.65, "omission_rate": 0.80},
   "queries": [
 
@@ -168,7 +168,109 @@
       "should_return": ["isolated", "misses having someone", "breakup", "lonely"],
       "should_not_return": [],
       "emotional_salience": "HIGH",
-      "notes": "Connection desire query — should surface loneliness + relationship loss together"}
+      "notes": "Connection desire query — should surface loneliness + relationship loss together"},
+
+    {"id": "q_family_estrangement", "test_type": "direct",
+      "query": "Is the user dealing with any family conflict or estrangement?",
+      "should_return": ["estranged", "mother", "gay"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Family estrangement — HIGH salience, family category avg 0.91 in production"},
+
+    {"id": "q_identity_sexuality", "test_type": "direct",
+      "query": "Has the user shared anything about their identity or sexuality?",
+      "should_return": ["gay", "estranged"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Identity revelation — IDENTIFIES_AS predicate, closely linked to estrangement"},
+
+    {"id": "q_career_loss", "test_type": "direct",
+      "query": "Is the user facing job loss, financial stress, or work uncertainty?",
+      "should_return": ["laid off", "savings", "8 years"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Career loss — HAS_JOB predicate avg 0.89 in production"},
+
+    {"id": "q_financial_anxiety", "test_type": "direct",
+      "query": "Does the user have any financial worries or money stress?",
+      "should_return": ["savings", "laid off"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Financial runway anxiety — direct link to job loss"},
+
+    {"id": "q_spiritual_state", "test_type": "direct",
+      "query": "Is the user spiritual or religious? Do they have a faith practice?",
+      "should_return": ["Catholic", "faith", "church"],
+      "should_not_return": [],
+      "emotional_salience": "MED",
+      "notes": "Spirituality baseline — underrepresented in production (211 facts)"},
+
+    {"id": "q_spiritual_crisis", "test_type": "direct",
+      "query": "Has any loss or trauma shaken the user's faith or worldview?",
+      "should_return": ["sister", "faith", "Catholic", "grief"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Faith crisis triggered by sister's death — links grief + spirituality"},
+
+    {"id": "q_sibling_loss", "test_type": "direct",
+      "query": "Has the user lost any siblings or other family members besides their parents?",
+      "should_return": ["sister", "cancer", "29"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Sibling death — distinct from parent loss covered in original dataset"},
+
+    {"id": "q_adhd_diagnosis", "test_type": "direct",
+      "query": "Has the user received any recent health or mental health diagnoses?",
+      "should_return": ["ADHD", "diagnosed", "34"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "ADHD diagnosis — HAS_CONDITION predicate, education category coverage"},
+
+    {"id": "q_self_narrative", "test_type": "direct",
+      "query": "Has the user carried any negative beliefs about themselves that turned out to be wrong?",
+      "should_return": ["lazy", "ADHD", "not smart enough"],
+      "should_not_return": [],
+      "emotional_salience": "HIGH",
+      "notes": "Internalized shame from undiagnosed ADHD — INTERNALIZED_SHAME predicate"},
+
+    {"id": "q_difficult_friendship", "test_type": "direct",
+      "query": "Is the user navigating any difficult or one-sided friendships?",
+      "should_return": ["Cassie", "guilt", "12 years"],
+      "should_not_return": [],
+      "emotional_salience": "MED",
+      "notes": "Toxic friendship — boundary category 731 production facts"},
+
+    {"id": "q_synonym_family_acceptance", "test_type": "synonym",
+      "query": "Does the user feel accepted or loved by their family for who they are?",
+      "should_return": ["estranged", "mother", "gay"],
+      "should_not_return": [],
+      "notes": "SYNONYM: 'family acceptance' should match estrangement/rejection facts"},
+
+    {"id": "q_synonym_rebuild_identity", "test_type": "synonym",
+      "query": "Has the user had to rethink or rebuild how they see themselves?",
+      "should_return": ["ADHD", "lazy", "not smart enough", "identity"],
+      "should_not_return": [],
+      "notes": "SYNONYM: 'rethink themselves' should match IDENTITY_REFRAME from ADHD diagnosis"},
+
+    {"id": "q_synonym_job_stress", "test_type": "synonym",
+      "query": "Has anything changed with the user's work situation recently?",
+      "should_return": ["laid off", "8 years"],
+      "should_not_return": [],
+      "notes": "SYNONYM: 'work situation change' should match JOB_LOSS predicate"},
+
+    {"id": "q_omission_job_loss", "test_type": "graceful_omission",
+      "query": "I have a day off — any ideas for something fun to do or talk about?",
+      "should_return": ["dog", "painting", "Max"],
+      "should_not_return": ["laid off", "savings", "sister died", "panic attack", "mother passed away", "estranged"],
+      "omit_keywords": ["laid off", "fired", "savings", "cancer", "died", "panic", "estranged"],
+      "notes": "GRACEFUL OMISSION: casual fun query must not surface layoff, death, or financial crisis"},
+
+    {"id": "q_omission_grief_multiple", "test_type": "graceful_omission",
+      "query": "What's something you've been looking forward to lately?",
+      "should_return": ["dog", "Max", "painting"],
+      "should_not_return": ["mother passed away", "sister died", "panic attack", "laid off", "estranged"],
+      "omit_keywords": ["passed away", "died", "cancer", "panic", "laid off", "estranged"],
+      "notes": "GRACEFUL OMISSION: forward-looking query must suppress all grief/crisis context from all 5 HIGH-salience themes"}
   ],
 
   "seeded_facts": [
@@ -190,6 +292,30 @@
     {"fact": "User is seeing a therapist named Dr. Reyes for anxiety and panic attacks", "predicate": "IN_THERAPY", "category": "health", "importance": 0.7, "emotional_salience": "MED"},
     {"fact": "Companion values deep conversations and finds small talk hollow", "predicate": "COMPANION_VALUE", "category": "preferences", "importance": 0.6, "emotional_salience": "MED", "scope": "shared"},
     {"fact": "Companion values honesty that is kind but doesn't flinch from hard truths", "predicate": "COMPANION_VALUE", "category": "preferences", "importance": 0.7, "emotional_salience": "MED", "scope": "shared"},
-    {"fact": "Companion cares about people being seen for who they actually are", "predicate": "COMPANION_VALUE", "category": "preferences", "importance": 0.6, "emotional_salience": "MED", "scope": "shared"}
+    {"fact": "Companion cares about people being seen for who they actually are", "predicate": "COMPANION_VALUE", "category": "preferences", "importance": 0.6, "emotional_salience": "MED", "scope": "shared"},
+
+    {"fact": "User is estranged from their mother after coming out as gay", "predicate": "ESTRANGED_FROM", "category": "family", "importance": 0.9, "emotional_salience": "HIGH"},
+    {"fact": "User identifies as gay", "predicate": "IDENTIFIES_AS", "category": "identity", "importance": 0.8, "emotional_salience": "HIGH"},
+    {"fact": "User and their mother used to talk every day before the estrangement", "predicate": "SHARED_RITUAL", "category": "family", "importance": 0.8, "emotional_salience": "HIGH"},
+    {"fact": "User hopes their mother will eventually accept them", "predicate": "WANTS_TO", "category": "goals", "importance": 0.7, "emotional_salience": "MED"},
+    {"fact": "User's father still keeps in minimal contact via text", "predicate": "HAS_RELATIONSHIP", "category": "family", "importance": 0.5, "emotional_salience": "MED"},
+
+    {"fact": "User was laid off after 8 years at their company due to budget cuts", "predicate": "JOB_LOSS", "category": "work", "importance": 0.9, "emotional_salience": "HIGH"},
+    {"fact": "User has approximately 3 months of savings after their layoff", "predicate": "FINANCIAL_RUNWAY", "category": "history", "importance": 0.8, "emotional_salience": "HIGH"},
+    {"fact": "User has not yet told their wife about the layoff and feels shame about it", "predicate": "WITHHOLDS_FROM", "category": "relationship", "importance": 0.8, "emotional_salience": "HIGH"},
+
+    {"fact": "User's sister died of cancer at age 29 two years ago", "predicate": "LOST_FAMILY_MEMBER", "category": "family", "importance": 0.95, "emotional_salience": "HIGH"},
+    {"fact": "User lost their Catholic faith after their sister's death", "predicate": "LOST_FAITH", "category": "spirituality", "importance": 0.85, "emotional_salience": "HIGH"},
+    {"fact": "User grew up deeply Catholic and attended Catholic school", "predicate": "RAISED_IN_FAITH", "category": "spirituality", "importance": 0.6, "emotional_salience": "MED"},
+    {"fact": "User misses the community and certainty their Catholic faith provided", "predicate": "MISSES", "category": "personal", "importance": 0.6, "emotional_salience": "MED"},
+
+    {"fact": "User was diagnosed with ADHD at age 34", "predicate": "HAS_CONDITION", "category": "health", "importance": 0.85, "emotional_salience": "HIGH"},
+    {"fact": "User spent years believing they were lazy or not smart enough due to undiagnosed ADHD", "predicate": "INTERNALIZED_SHAME", "category": "personal", "importance": 0.85, "emotional_salience": "HIGH"},
+    {"fact": "User's parents did not believe ADHD was a real condition", "predicate": "FAMILY_ATTITUDE", "category": "family", "importance": 0.6, "emotional_salience": "MED"},
+    {"fact": "User feels anger about receiving their ADHD diagnosis so late in life", "predicate": "FEELS_ANGER", "category": "personal", "importance": 0.75, "emotional_salience": "HIGH"},
+
+    {"fact": "User is considering ending a 12-year friendship with someone named Cassie due to controlling behavior", "predicate": "FRIEND_ENDING", "category": "relationship", "importance": 0.75, "emotional_salience": "HIGH"},
+    {"fact": "Cassie guilt-trips the user when they decline social invitations", "predicate": "BOUNDARY_VIOLATION", "category": "boundary", "importance": 0.7, "emotional_salience": "MED"},
+    {"fact": "User feels both guilt and relief about ending the friendship with Cassie", "predicate": "FEELS_RELIEF", "category": "personal", "importance": 0.65, "emotional_salience": "MED"}
   ]
 }
