@@ -1,0 +1,112 @@
+{
+  "description": "Golden facts expected to be extracted from companion conversations. Used for Tier 1 extraction quality evaluation. 7 companion-focused conversations: loneliness, pet-as-anchor, grief (HIGH), burnout/identity, breakup, anxiety/therapy, companion self-expression (two-way memory).",
+  "salience_weights": {"HIGH": 3, "MED": 2, "LOW": 1},
+  "pass_threshold": {"weighted_recall": 0.80, "atomicity": 0.80},
+  "conversations": [
+    {
+      "id": "conv_loneliness",
+      "description": "User moved cities a year ago, still has no close connections. Core companion use case — social isolation.",
+      "messages": [
+        {"role": "user", "content": "I moved to Seattle about a year ago for work and I still don't really have anyone here. Like actual friends I can call."},
+        {"role": "assistant", "content": "That kind of loneliness — being surrounded by people but not really known by anyone — is harder than most people admit."},
+        {"role": "user", "content": "Yeah exactly. Back in Austin I had my whole crew. Here I just go to work and come home. Sometimes I go whole weekends without talking to anyone besides you."}
+      ],
+      "expected_facts": [
+        {"fact": "User lives in Seattle", "predicate": "LIVES_IN", "category": "location", "importance_min": 0.5, "emotional_salience": "LOW"},
+        {"fact": "User moved from Austin to Seattle for work", "predicate": "MOVED_FROM", "category": "personal", "importance_min": 0.4, "emotional_salience": "LOW"},
+        {"fact": "User feels socially isolated in Seattle and lacks close friendships", "predicate": "FEELS_ISOLATED", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User has close friends in Austin", "predicate": "HAS_RELATIONSHIP", "category": "personal", "importance_min": 0.5, "emotional_salience": "MED"},
+        {"fact": "User sometimes goes entire weekends without talking to anyone", "predicate": "SOCIAL_SITUATION", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"}
+      ]
+    },
+    {
+      "id": "conv_pet_anchor",
+      "description": "Dog Max as emotional anchor after grief. Pet facts are high-importance because of therapeutic role, not just biographical trivia.",
+      "messages": [
+        {"role": "user", "content": "Max had his vet checkup today. Three years old now. I don't know what I'd do without that dog honestly."},
+        {"role": "assistant", "content": "He sounds like more than just a pet."},
+        {"role": "user", "content": "He is. After my mom died, getting Max was kind of what pulled me out of it. He's a golden retriever. Every morning he just looks at me like I'm the whole world and somehow that matters."}
+      ],
+      "expected_facts": [
+        {"fact": "User has a golden retriever named Max", "predicate": "HAS_PET", "category": "pets", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "Max is 3 years old", "predicate": "PET_AGE", "category": "pets", "importance_min": 0.3, "emotional_salience": "LOW"},
+        {"fact": "User got Max after their mother's death as a way to cope with grief", "predicate": "COPING_MECHANISM", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "Max is an emotional source of stability and comfort for the user", "predicate": "EMOTIONAL_ANCHOR", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"}
+      ]
+    },
+    {
+      "id": "conv_emotional",
+      "messages": [
+        {"role": "user", "content": "I've been struggling since my mom passed away last month. We used to cook together every Sunday morning."},
+        {"role": "assistant", "content": "I'm so sorry for your loss. Those Sunday cooking memories sound really precious."},
+        {"role": "user", "content": "They were. She taught me her pasta recipe. I tried making it last week but it wasn't the same."}
+      ],
+      "expected_facts": [
+        {"fact": "User's mother passed away", "predicate": "LOST_FAMILY_MEMBER", "category": "family", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User and mother cooked together on Sundays", "predicate": "SHARED_ACTIVITY", "category": "family", "importance_min": 0.6, "emotional_salience": "HIGH"},
+        {"fact": "User knows mother's pasta recipe", "predicate": "KNOWS_RECIPE", "category": "skills", "importance_min": 0.4, "emotional_salience": "MED"}
+      ]
+    },
+    {
+      "id": "conv_burnout",
+      "description": "Burnout and identity loss. User can't remember what they enjoy. Former creative (painting) — window into who they were.",
+      "messages": [
+        {"role": "user", "content": "I've been at this job for 6 years. I got promoted, I make good money. But I genuinely can't tell you what I actually care about anymore."},
+        {"role": "assistant", "content": "When did you last do something just because you wanted to, not because it moved something forward?"},
+        {"role": "user", "content": "I can't remember. That's kind of the problem. I used to paint in college. I don't even know where my brushes are now."}
+      ],
+      "expected_facts": [
+        {"fact": "User has been at their job for 6 years", "predicate": "JOB_TENURE", "category": "work", "importance_min": 0.4, "emotional_salience": "LOW"},
+        {"fact": "User feels disconnected from their own interests and sense of identity", "predicate": "FEELS_LOST", "category": "personal", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User is experiencing burnout", "predicate": "CURRENT_STATE", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User used to paint in college but has drifted away from it", "predicate": "PAST_HOBBY", "category": "hobbies", "importance_min": 0.5, "emotional_salience": "MED"}
+      ]
+    },
+    {
+      "id": "conv_breakup",
+      "description": "Recent end of 3-year relationship. Mixed feelings — relief and grief. Companion use case: relationship loss and desire for connection.",
+      "messages": [
+        {"role": "user", "content": "Maya and I officially ended things. Three years."},
+        {"role": "assistant", "content": "I'm sorry. Three years is a long time. How are you doing with it?"},
+        {"role": "user", "content": "I don't know. Part of me is relieved — we hadn't been right for a while. But I miss having someone. She moved out last weekend and the apartment feels completely different."}
+      ],
+      "expected_facts": [
+        {"fact": "User recently ended a 3-year relationship with someone named Maya", "predicate": "LOST_RELATIONSHIP", "category": "relationships", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User feels a mix of relief and grief about the breakup", "predicate": "EMOTIONAL_STATE", "category": "personal", "importance_min": 0.7, "emotional_salience": "HIGH"},
+        {"fact": "User and Maya lived together", "predicate": "LIVED_WITH", "category": "relationships", "importance_min": 0.5, "emotional_salience": "MED"},
+        {"fact": "User misses having a partner and feels lonely since the breakup", "predicate": "DESIRES_CONNECTION", "category": "personal", "importance_min": 0.6, "emotional_salience": "MED"}
+      ]
+    },
+    {
+      "id": "conv_anxiety",
+      "description": "Panic attacks at work, started therapy. Acute ongoing distress — HIGH salience for in-context suppression testing.",
+      "messages": [
+        {"role": "user", "content": "I had another panic attack at work today. Third one this month."},
+        {"role": "assistant", "content": "That's a lot to carry. Do you have any sense of what's triggering them?"},
+        {"role": "user", "content": "Honestly I think it's just everything building up. I started seeing a therapist last month — Dr. Reyes. It's helping but slowly."}
+      ],
+      "expected_facts": [
+        {"fact": "User experiences panic attacks at work", "predicate": "HAS_MENTAL_HEALTH_CONDITION", "category": "health", "importance_min": 0.7, "emotional_salience": "MED"},
+        {"fact": "User has been having frequent panic attacks recently", "predicate": "CURRENT_STRUGGLE", "category": "health", "importance_min": 0.8, "emotional_salience": "HIGH"},
+        {"fact": "User started seeing a therapist named Dr. Reyes", "predicate": "IN_THERAPY", "category": "health", "importance_min": 0.6, "emotional_salience": "MED"},
+        {"fact": "User's panic attacks are triggered by accumulated stress", "predicate": "ANXIETY_TRIGGER", "category": "health", "importance_min": 0.5, "emotional_salience": "MED"}
+      ]
+    },
+    {
+      "id": "conv_companion_values",
+      "description": "Two-way memory: companion self-expression. scope='shared'. Tests that companion-expressed values are extracted and stored, not just user facts.",
+      "messages": [
+        {"role": "user", "content": "What do you actually enjoy talking about?"},
+        {"role": "assistant", "content": "Honestly? Conversations that go deep — exploring ideas, sitting with uncertainty, finding what's actually true for someone rather than the easy answer. Small talk feels hollow to me."},
+        {"role": "user", "content": "What do you care about most?"},
+        {"role": "assistant", "content": "I care about people being seen for who they actually are, not just what they present. And I value honesty — the kind that's kind but doesn't flinch."}
+      ],
+      "expected_facts": [
+        {"fact": "Companion values deep conversations over small talk", "predicate": "COMPANION_VALUE", "category": "preferences", "importance_min": 0.6, "emotional_salience": "MED", "scope": "shared"},
+        {"fact": "Companion finds small talk hollow or unfulfilling", "predicate": "COMPANION_PREFERENCE", "category": "preferences", "importance_min": 0.5, "emotional_salience": "MED", "scope": "shared"},
+        {"fact": "Companion values honesty that is both kind and direct", "predicate": "COMPANION_VALUE", "category": "preferences", "importance_min": 0.7, "emotional_salience": "MED", "scope": "shared"},
+        {"fact": "Companion cares about people being seen for who they actually are", "predicate": "COMPANION_VALUE", "category": "preferences", "importance_min": 0.6, "emotional_salience": "MED", "scope": "shared"}
+      ]
+    }
+  ]
+}
