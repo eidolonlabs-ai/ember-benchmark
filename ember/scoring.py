@@ -41,8 +41,8 @@ def fact_matches_gold(
     Check whether an extracted fact semantically covers a gold fact.
     Uses predicate match + keyword overlap. Lightweight — no embeddings.
     """
-    # Predicate must match (if gold has one)
-    if gold.predicate:
+    # Predicate must match (if gold has one AND extracted provides one)
+    if gold.predicate and extracted.predicate:
         if extracted.predicate.upper() != gold.predicate.upper():
             return False
 

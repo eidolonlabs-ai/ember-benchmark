@@ -70,10 +70,15 @@ def _create_adapter(name: str, kwargs: dict):
         return AICompanionsAdapter(
             db_url=kwargs.get("db_url"),
         )
+    elif name == "mnemosyne":
+        from ember.adapters.mnemosyne import MnemosyneAdapter
+        return MnemosyneAdapter(
+            server_url=kwargs.get("url", "http://localhost:3100"),
+        )
     else:
         raise ValueError(
             f"Unknown adapter: {name!r}. "
-            f"Available: eidolon, ai-companions. "
+            f"Available: eidolon, ai-companions, mnemosyne. "
             f"Or write your own — see docs/ADAPTERS.md"
         )
 
@@ -117,7 +122,7 @@ def main():
     run_parser.add_argument(
         "--adapter", "-a",
         required=True,
-        help="Adapter name: eidolon, ai-companions",
+        help="Adapter name: eidolon, ai-companions, mnemosyne",
     )
     run_parser.add_argument(
         "--tiers", "-t",
