@@ -598,20 +598,6 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
                                     metadata={"source": "assistant_transcript"},
                                 )
                             )
-                    full_conversation = self._clean_fact_text(conversation_text)
-                    key = self._normalize_text(full_conversation)
-                    if key and key not in seen:
-                        self._last_extracted_facts.append(
-                            ExtractedFact(
-                                fact=full_conversation,
-                                predicate="",
-                                category="",
-                                importance=0.5,
-                                confidence=0.75,
-                                scope="user",
-                                metadata={"source": "conversation_snapshot"},
-                            )
-                        )
             # Also store episodic trace so retrieval can leverage exact phrasing
             # from user narratives in long-horizon roundtrip tests.
             await self._call_tool(
