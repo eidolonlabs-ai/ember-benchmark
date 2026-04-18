@@ -6,6 +6,9 @@ Establish a repeatable benchmark program for agent memory quality where:
 2. EMBER remains the companion-memory priority benchmark.
 3. Results are recorded in a single tracker format for trend analysis.
 
+## Policy Reference
+- Use [docs/BENCHMARK_MATRIX.md](docs/BENCHMARK_MATRIX.md) as the authoritative release-gate threshold policy.
+
 ## Benchmark Priority Order
 1. LOCOMO
 2. LongMemEval
