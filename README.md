@@ -143,6 +143,13 @@ See [docs/SCORING.md](docs/SCORING.md) for scoring methodology.
 3. Write an adapter in `ember/adapters/`
 4. Run tiers: `ember run --adapter your-adapter`
 
+## Cross-Benchmark Program
+
+To run and track LOCOMO, LongMemEval, and EMBER in one place:
+
+- Plan: [docs/MULTI_BENCHMARK_TESTING_PLAN.md](docs/MULTI_BENCHMARK_TESTING_PLAN.md)
+- Run tracker: [docs/BENCHMARK_TRACKER.md](docs/BENCHMARK_TRACKER.md)
+
 ## License
 
 CC-BY-4.0 — Use freely, cite the benchmark.
