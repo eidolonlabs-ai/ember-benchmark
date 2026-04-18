@@ -1,8 +1,8 @@
 """
-Mnemosyne MCP adapter for EMBER.
+Eidolon Agent Memory MCP adapter for EMBER.
 
-Connects to a running Mnemosyne server (http://localhost:3100) via the
-MCP streamable-http transport.  Mnemosyne is a multi-layer cognitive
+Connects to a running Eidolon Agent Memory server (http://localhost:3100) via the
+MCP streamable-http transport.  Eidolon Agent Memory is a multi-layer cognitive
 companion memory platform that stores facts as a knowledge graph with
 pgvector embeddings.
 
@@ -10,15 +10,16 @@ Requirements:
     pip install httpx
 
 Usage:
-    adapter = MnemosyneAdapter(server_url="http://localhost:3100")
+    adapter = EidolonAgentMemoryAdapter(server_url="http://localhost:3100")
     results = await ember.run(adapter)
 
-The Mnemosyne server must already be running (docker compose up) before
-tests start. See mnemosyne/README.md for setup instructions.
+The Eidolon Agent Memory server must already be running (docker compose up) before
+tests start. See the Eidolon Agent Memory repository README for setup instructions.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import secrets
 from datetime import datetime, timezone
@@ -30,9 +31,9 @@ from ember.adapter import MemoryAdapter
 from ember.types import ExtractedFact, Message, SearchResult, SeededFact
 
 
-class MnemosyneAdapter(MemoryAdapter):
+class EidolonAgentMemoryAdapter(MemoryAdapter):
     """
-    Adapter for the Mnemosyne companion memory platform.
+    Adapter for the Eidolon Agent Memory companion memory platform.
 
     Talks to the MCP streamable-http server via JSON-RPC.  The server
     handles:
@@ -62,11 +63,11 @@ class MnemosyneAdapter(MemoryAdapter):
 
     @property
     def name(self) -> str:
-        return "Mnemosyne"
+        return "Eidolon Agent Memory"
 
     @property
     def supports_two_way_memory(self) -> bool:
-        # Mnemosyne has scope='shared' on MemoryEdge
+        # Eidolon Agent Memory has scope='shared' on MemoryEdge
         return True
 
     @property
@@ -328,9 +329,42 @@ class MnemosyneAdapter(MemoryAdapter):
             "params": {"name": tool_name, "arguments": arguments or {}},
             "id": self._next_id(),
         }
-        result = await self._post(payload)
-        if "error" in result:
+
+        result: dict[str, Any] = {}
+        for session_attempt in range(2):
+            last_error: Exception | None = None
+            for attempt in range(3):
+                try:
+                    result = await self._post(payload)
+                    break
+                except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError) as exc:
+                    last_error = exc
+                    if attempt == 2:
+                        raise
+                    await asyncio.sleep(0.15 * (attempt + 1))
+            else:
+                if last_error is not None:
+                    raise last_error
+                result = {}
+
+            if "error" not in result:
+                break
+
+            error_obj = result.get("error")
+            msg = ""
+            if isinstance(error_obj, dict):
+                msg = str(error_obj.get("message", "")).lower()
+            else:
+                msg = str(error_obj).lower()
+
+            if session_attempt == 0 and "session not found" in msg:
+                self._session_id = None
+                await self._initialize_mcp_session()
+                payload["id"] = self._next_id()
+                continue
+
             raise RuntimeError(f"MCP tool '{tool_name}' error: {result['error']}")
+
         content = result.get("result", {}).get("content", [])
         text = content[0].get("text", "") if content else ""
         if not text:
@@ -358,22 +392,7 @@ class MnemosyneAdapter(MemoryAdapter):
         """Open HTTP client, complete MCP handshake, provision user + companion."""
         self._client = httpx.AsyncClient(timeout=self.timeout)
 
-        # 1. MCP initialize handshake
-        await self._post(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "ember-benchmark", "version": "0.1.0"},
-                },
-                "id": self._next_id(),
-            }
-        )
-        await self._post(
-            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
-        )
+        await self._initialize_mcp_session()
 
         # 2. Provision a fresh user for this eval run (random email avoids unique constraint)
         run_id = secrets.token_hex(8)
@@ -395,6 +414,26 @@ class MnemosyneAdapter(MemoryAdapter):
         )
         self._companion_id = companion_data["companion_id"]
 
+    async def _initialize_mcp_session(self) -> None:
+        """Initialize or reinitialize MCP transport session."""
+
+        # 1. MCP initialize handshake
+        await self._post(
+            {
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "ember-benchmark", "version": "0.1.0"},
+                },
+                "id": self._next_id(),
+            }
+        )
+        await self._post(
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
+        )
+
     async def teardown(self) -> None:
         """Close the HTTP client."""
         if self._client:
@@ -407,7 +446,7 @@ class MnemosyneAdapter(MemoryAdapter):
 
     async def ingest_conversation(self, messages: list[Message]) -> None:
         """
-        Feed a conversation into Mnemosyne via extract_session_facts.
+        Feed a conversation into Eidolon Agent Memory via extract_session_facts.
 
         Formats the message list as 'User: ...\nAssistant: ...' text and
         calls the LLM-backed extraction tool.
@@ -452,14 +491,12 @@ class MnemosyneAdapter(MemoryAdapter):
         """
         Retrieve all extracted facts via a set of broad search_memory queries.
 
-        Mnemosyne has no 'list all' endpoint, so we probe with several
+        Eidolon Agent Memory has no 'list all' endpoint, so we probe with several
         high-coverage queries and deduplicate by fact text.
         
         OPTIMIZED: Runs all 12 probe queries in parallel (not sequential)
         for ~4-5x speedup.
         """
-        import asyncio
-        
         probe_queries = [
             "user life personal history",
             "feelings emotions mental health anxiety grief loss",
@@ -515,7 +552,7 @@ class MnemosyneAdapter(MemoryAdapter):
         return list(seen.values())
 
     async def search(self, query: str, limit: int = 10) -> list[SearchResult]:
-        """Search Mnemosyne using hybrid semantic retrieval."""
+        """Search Eidolon Agent Memory using hybrid semantic retrieval."""
         intent = self._infer_intent(query)
         expansions = self._query_expansions(query)
         merged: dict[str, dict[str, Any]] = {}
@@ -523,7 +560,7 @@ class MnemosyneAdapter(MemoryAdapter):
         for qx in expansions:
             boost_terms |= self._tokenize(qx)
 
-        for q in expansions:
+        async def _search_one(q: str) -> dict[str, Any]:
             result = await self._call_tool(
                 "search_memory",
                 {
@@ -534,6 +571,14 @@ class MnemosyneAdapter(MemoryAdapter):
                     "limit": max(40, limit * 10),
                 },
             )
+            return result if isinstance(result, dict) else {}
+
+        search_results = await asyncio.gather(
+            *[_search_one(q) for q in expansions],
+            return_exceptions=True,
+        )
+
+        for result in search_results:
             if not isinstance(result, dict):
                 continue
             for f in result.get("facts", []):
@@ -625,11 +670,9 @@ class MnemosyneAdapter(MemoryAdapter):
 
     async def seed_facts(self, facts: list[SeededFact]) -> None:
         """Pre-load facts by calling store_fact for each SeededFact."""
-        for f in facts:
-            # Split fact_text into a simple subject→object form for the graph
-            # store_fact needs subject / predicate / obj — derive from SeededFact
+        async def _store_one(f: SeededFact) -> None:
             subject = "user"
-            obj = f.fact  # put the full fact text as the object
+            obj = f.fact
             await self._call_tool(
                 "store_fact",
                 {
@@ -651,6 +694,12 @@ class MnemosyneAdapter(MemoryAdapter):
                     "updated_at": f.updated_at.isoformat() if f.updated_at else "",
                 },
             )
+
+        # Keep writes serialized to avoid node upsert races on unique constraints.
+        batch_size = 1
+        for i in range(0, len(facts), batch_size):
+            batch = facts[i:i + batch_size]
+            await asyncio.gather(*[_store_one(f) for f in batch])
 
     async def reset(self) -> None:
         """

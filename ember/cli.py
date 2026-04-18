@@ -70,15 +70,15 @@ def _create_adapter(name: str, kwargs: dict):
         return AICompanionsAdapter(
             db_url=kwargs.get("db_url"),
         )
-    elif name == "mnemosyne":
-        from ember.adapters.mnemosyne import MnemosyneAdapter
-        return MnemosyneAdapter(
+    elif name in {"eidolon-agent-memory", "eidolon_agent_memory"}:
+        from ember.adapters.eidolon_agent_memory import EidolonAgentMemoryAdapter
+        return EidolonAgentMemoryAdapter(
             server_url=kwargs.get("url", "http://localhost:3100"),
         )
     else:
         raise ValueError(
             f"Unknown adapter: {name!r}. "
-            f"Available: eidolon, ai-companions, mnemosyne. "
+            f"Available: eidolon, ai-companions, eidolon-agent-memory. "
             f"Or write your own — see docs/ADAPTERS.md"
         )
 
@@ -122,7 +122,7 @@ def main():
     run_parser.add_argument(
         "--adapter", "-a",
         required=True,
-        help="Adapter name: eidolon, ai-companions, mnemosyne",
+        help="Adapter name: eidolon, ai-companions, eidolon-agent-memory",
     )
     run_parser.add_argument(
         "--tiers", "-t",
@@ -162,6 +162,7 @@ def main():
         print("Adapters:")
         print("  eidolon        — Eidolon MCP Server (HTTP)")
         print("  ai-companions  — AI Companions (direct PostgreSQL)")
+        print("  eidolon-agent-memory  — Eidolon Agent Memory MCP Server (HTTP)")
         print()
         print("Tiers:")
         print("  1  Extraction Quality (salience-weighted recall)")
@@ -197,7 +198,10 @@ def main():
                 "elapsed_seconds": round(elapsed, 2),
                 "results": [r.model_dump() for r in results],
             }
-            Path(args.json).write_text(json.dumps(output, indent=2, default=str))
+            Path(args.json).write_text(
+                json.dumps(output, indent=2, default=str),
+                encoding="utf-8",
+            )
             print(f"Results written to {args.json}")
 
         # Exit code: non-zero if any tier failed
