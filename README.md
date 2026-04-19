@@ -114,7 +114,9 @@ See [docs/SCORING.md](docs/SCORING.md) for scoring methodology.
 
 ## Dataset
 
-7 conversations grounded in real companion AI use cases:
+**Origin:** EMBER uses a Hybrid generation strategy. The Core Benchmark (Tiers 1-3) is **100% human-authored** to ensure authentic emotional subtext and zero training leakage. The Adversarial Sets are synthetically constructed to explicitly stress-test targeted logic traps.
+
+12 conversations grounded in real companion AI use cases (7 core themes shown below):
 
 | Conversation | Theme | Key Facts |
 |-------------|-------|-----------|
