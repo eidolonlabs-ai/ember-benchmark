@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import secrets
 from datetime import datetime, timezone
 from typing import Any
@@ -29,6 +30,8 @@ import httpx
 
 from ember.adapter import MemoryAdapter
 from ember.types import ExtractedFact, Message, SearchResult, SeededFact
+
+logger = logging.getLogger(__name__)
 
 
 class EidolonAgentMemoryAdapter(MemoryAdapter):
@@ -375,7 +378,11 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
     async def _call_tool(
         self, tool_name: str, arguments: dict[str, Any] | None = None
     ) -> Any:
-        """Call an MCP tool and return the parsed text content (always dict or list)."""
+        """Call an MCP tool and return the parsed text content (always dict or list).
+        
+        Treats extract_session_facts as best-effort: malformed JSON is logged but not fatal.
+        For other tools, JSON parse errors are logged at debug level and return empty dict.
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/call",
@@ -419,12 +426,23 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
             raise RuntimeError(f"MCP tool '{tool_name}' error: {result['error']}")
 
         content = result.get("result", {}).get("content", [])
-        text = content[0].get("text", "") if content else ""
+        if not content:
+            return {}
+        
+        # Extract text safely — content may have non-dict items or missing 'text' field
+        text = ""
+        if isinstance(content, list) and len(content) > 0:
+            item = content[0]
+            if isinstance(item, dict):
+                text = item.get("text", "")
+        
         if not text:
             return {}
+        
         # FastMCP wraps tool errors in content text starting with "Error executing tool"
         if text.startswith("Error executing tool"):
             raise RuntimeError(f"MCP tool '{tool_name}' failed: {text[:200]}")
+        
         try:
             parsed = json.loads(text)
             # If the JSON decodes to a plain string, try one more level
@@ -432,9 +450,19 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
                 try:
                     return json.loads(parsed)
                 except json.JSONDecodeError:
+                    logger.debug("Tool '%s' returned double-wrapped string that failed JSON decode", tool_name)
                     return {}
             return parsed
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            # For extraction tools, log at warning level since content loss is expected
+            if tool_name == "extract_session_facts":
+                logger.warning(
+                    "Tool '%s' returned malformed JSON (first 200 chars): %r",
+                    tool_name,
+                    text[:200],
+                )
+            else:
+                logger.debug("Tool '%s' returned malformed JSON: %s", tool_name, str(e)[:100])
             return {}
 
     # ------------------------------------------------------------------
@@ -502,7 +530,9 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
         Feed a conversation into Eidolon Agent Memory via extract_session_facts.
 
         Formats the message list as 'User: ...\nAssistant: ...' text and
-        calls the LLM-backed extraction tool.
+        calls the LLM-backed extraction tool. Treats extraction as best-effort:
+        even if LLM extraction fails or returns malformed JSON, the adapter
+        uses fallback extraction from utterances to ensure some facts are captured.
         """
         lines = []
         self._last_user_utterances = []
@@ -517,6 +547,7 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
         conversation_text = "\n".join(lines)
         self._last_extracted_facts = []
 
+        # First, attempt LLM extraction
         try:
             extraction_result = await self._call_tool(
                 "extract_session_facts",
@@ -528,7 +559,7 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
             )
             if isinstance(extraction_result, dict):
                 facts = extraction_result.get("facts", [])
-                if isinstance(facts, list):
+                if isinstance(facts, list) and len(facts) > 0:
                     self._last_extracted_facts = [
                         ExtractedFact(
                             fact=self._clean_fact_text(str(f.get("fact_text", ""))),
@@ -548,58 +579,88 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
                         for f in facts
                         if isinstance(f, dict) and str(f.get("fact_text", "")).strip()
                     ]
-                    seen = {self._normalize_text(item.fact) for item in self._last_extracted_facts}
-                    for utterance in self._last_user_utterances:
-                        key = self._normalize_text(utterance)
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        cleaned_utterance = self._clean_fact_text(utterance)
-                        self._last_extracted_facts.append(
-                            ExtractedFact(
-                                fact=cleaned_utterance,
-                                predicate="",
-                                category="",
-                                importance=0.6,
-                                confidence=0.8,
-                                scope="user",
-                                metadata={"source": "user_utterance"},
-                            )
+        except RuntimeError as e:
+            logger.warning("LLM extraction failed: %s", e)
+        
+        # Fallback: if LLM extraction didn't produce facts, use utterance-based extraction
+        if not self._last_extracted_facts:
+            logger.info("LLM extraction returned no facts; falling back to utterance-based extraction")
+            seen: dict[str, ExtractedFact] = {}
+            
+            # Add all user utterances as facts
+            for utterance in self._last_user_utterances:
+                key = self._normalize_text(utterance)
+                if key not in seen:
+                    cleaned = self._clean_fact_text(utterance)
+                    seen[key] = ExtractedFact(
+                        fact=cleaned,
+                        predicate="",
+                        category="",
+                        importance=0.6,
+                        confidence=0.8,
+                        scope="user",
+                        metadata={"source": "user_utterance"},
+                    )
+            
+            # Add combined user transcript
+            if self._last_user_utterances:
+                combined = self._clean_fact_text(" ".join(self._last_user_utterances))
+                key = self._normalize_text(combined)
+                if key and key not in seen:
+                    seen[key] = ExtractedFact(
+                        fact=combined,
+                        predicate="",
+                        category="",
+                        importance=0.7,
+                        confidence=0.85,
+                        scope="user",
+                        metadata={"source": "user_transcript"},
+                    )
+            
+            # Add shared assistant facts
+            if self._last_assistant_utterances:
+                combined_shared = self._clean_fact_text(" ".join(self._last_assistant_utterances))
+                key = self._normalize_text(combined_shared)
+                if key and key not in seen:
+                    seen[key] = ExtractedFact(
+                        fact=combined_shared,
+                        predicate="",
+                        category="",
+                        importance=0.55,
+                        confidence=0.8,
+                        scope="shared",
+                        metadata={"source": "assistant_transcript"},
+                    )
+            
+            self._last_extracted_facts = list(seen.values())
+        else:
+            # LLM succeeded; still add utterances as supplementary facts if not already present
+            seen = {self._normalize_text(item.fact) for item in self._last_extracted_facts}
+            supplementary: list[ExtractedFact] = []
+            
+            for utterance in self._last_user_utterances:
+                key = self._normalize_text(utterance)
+                if key not in seen:
+                    seen.add(key)
+                    cleaned = self._clean_fact_text(utterance)
+                    supplementary.append(
+                        ExtractedFact(
+                            fact=cleaned,
+                            predicate="",
+                            category="",
+                            importance=0.6,
+                            confidence=0.8,
+                            scope="user",
+                            metadata={"source": "user_utterance"},
                         )
-                    if self._last_user_utterances:
-                        combined = self._clean_fact_text(" ".join(self._last_user_utterances))
-                        key = self._normalize_text(combined)
-                        if key and key not in seen:
-                            seen.add(key)
-                            self._last_extracted_facts.append(
-                                ExtractedFact(
-                                    fact=combined,
-                                    predicate="",
-                                    category="",
-                                    importance=0.7,
-                                    confidence=0.85,
-                                    scope="user",
-                                    metadata={"source": "user_transcript"},
-                                )
-                            )
-                    if self._last_assistant_utterances:
-                        combined_shared = self._clean_fact_text(" ".join(self._last_assistant_utterances))
-                        key = self._normalize_text(combined_shared)
-                        if key and key not in seen:
-                            seen.add(key)
-                            self._last_extracted_facts.append(
-                                ExtractedFact(
-                                    fact=combined_shared,
-                                    predicate="",
-                                    category="",
-                                    importance=0.55,
-                                    confidence=0.8,
-                                    scope="shared",
-                                    metadata={"source": "assistant_transcript"},
-                                )
-                            )
-            # Also store episodic trace so retrieval can leverage exact phrasing
-            # from user narratives in long-horizon roundtrip tests.
+                    )
+            
+            if supplementary:
+                self._last_extracted_facts.extend(supplementary)
+        
+        # Always store episodic trace so retrieval can leverage exact phrasing
+        # from user narratives in long-horizon roundtrip tests.
+        try:
             await self._call_tool(
                 "store_episodic",
                 {
@@ -610,10 +671,8 @@ class EidolonAgentMemoryAdapter(MemoryAdapter):
                     "importance": 0.75,
                 },
             )
-        except RuntimeError:
-            # LLM or DB errors during extraction are non-fatal;
-            # get_extracted_facts will simply return empty results.
-            pass
+        except RuntimeError as e:
+            logger.debug("Failed to store episodic memory: %s", e)
 
     async def wait_for_extraction(self, timeout_seconds: float = 60) -> None:
         """No-op: extract_session_facts is synchronous (blocks until LLM finishes)."""
